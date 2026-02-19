@@ -1,0 +1,64 @@
+[project]
+name = "template"  # The pip install <name>.
+version = "0.1.0"
+description = "Template for repos that are intended to be packaged libraries."
+readme = "README.md"
+authors = [{ name = "Eric Apgar" }]
+urls = { "Homepage" = "https://github.com/EricApgar/template" }
+requires-python = "~=3.13.0"
+
+# Examples of dependency types.
+# dependencies = [
+#     "numpy==2.3.2",  # Specifically this version. numpy requires no depenedencies.
+#     "pandas~=2.3",  # Any micro version in 2.3 branch (>2.3, <2.4). Pandas has 4 dependencies.
+#     "PyYAML>5.1.1",  # Any version greater than 5.1.1.
+#     "Pygments",   # Latest version.
+#     'python-certifi-win32; platform_system == "Windows"',  # Only if on Windows.
+#     "torch",  # See below for special pytorch considerations.
+#     "torchvision",  # See below for special pytorch considerations.
+#     "llm"  # See below for special pytorch considerations.
+# ]
+
+dependencies = []
+
+# Examples of optional dependencies.
+# [project.optional-dependencies]
+# option_1 = [
+#     "lib_1>=0.18.0",
+#     "lib_2>=2.2.1"]
+# option_2 = [
+#     "lib_1>=1.0",
+#     "lib_3>=2.0"]
+# option_3 = [
+#     "lib_2>=0.5",
+#     "lib_3>=3.1"]
+
+# Unfortunately, an all option just has to list everything - no way to chain options.
+# all = [
+#     "lib_1",
+#     "lib_2",
+#     "lib_3",
+# ]
+
+# If you need to add an index (extra "source" location) for certain packages: 
+# [[tool.uv.index]]
+# name = "pytorch-cu130"
+# url = "https://download.pytorch.org/whl/cu130"
+# explicit = true  # Only used for torch packages explicitly mapped below.
+
+# Route just these packages to their specific special indexes.
+# [tool.uv.sources]
+# torch = { index = "pytorch-cu130" }
+# torchvision = { index = "pytorch-cu130" }
+# llm = { git = "https://github.com/EricApgar/large-language-model", rev = "v0.1.0"}  # This routes to a GitHub release.
+
+[build-system]
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.setuptools]
+package-dir = {"" = "src"}  # Important that this folder is the name of the folder where all the files sit under.
+
+[tool.setuptools.packages.find]
+where = ["src"]
+# include = ["template*"]  # The import <name>. Defined by the name of the folder under src.
