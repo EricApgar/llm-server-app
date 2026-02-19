@@ -248,7 +248,146 @@ class ModelTable:
         return
 
 
-    def on_name_change
+    def on_name_change(self, e) -> None:
+        if not isinstance(self.new_name_input.value, str):
+            self.parent.loq_queue.put(f'Invalid model name. Must be string.')
+            self.new_name_input = ''
 
-if __name__ == "__main__":
-    main()
+        return
+
+
+    def on_add_model(self) -> None:
+        tag = str(self.new_tag_input.value).strip()
+        name = str(self.new_name_input.value).strip()
+        if not tag or not name:
+            self.parent.log_queue.put('Both "Tag" and "Name" fields are required to add a model.')
+            return
+
+        if tag in self.parent.server.backend.models:
+            self.parent.log_queue.put(f'A model by tag "{tag}" already exists.')
+            return
+
+        self.parent.server.add_model(tag=tag, name=name)
+
+        self._refresh_table()
+
+        self.new_tag_input.value = ''
+        self.new_name_input.value = ''
+
+        self.parent.model_loading.model_select.options = list(self.parent.server.backend.models.keys())
+        self.parent.model_loading.model_select.update()
+
+        self.parent.loq_queue.put(f'Added model, {tag}: {name}')
+
+        return
+
+
+    def on_table_selection(self, e) -> None:
+        currently_selected = self._selected_models
+
+        selected = getattr(e, 'args', [])
+        changed_items = [item['tag'] for item in selected['rows']]
+
+        if selected['added']:
+            self._selected_models.extend([tag for tag in changed_items if tag not in currently_selected])
+        else:
+            self._selected_models = [i for i in currently_selected if i not in changed_items]
+
+        return
+
+
+    def on_remove_selected(self) -> None:
+
+        if not self._selected_models:
+            self.parent.log_queue.put('No connections selected to remove.')
+            return
+
+        for tag in self._selected_models:
+            self.parent.server.del_model(tag=tag)
+
+        self._refresh_table()
+        self._selected_models.clear()
+
+        self.parent.model_loading.model_select.options = list(self.parent.server.backend.models.keys())
+        self.parent.model_loading.model_select.update()
+
+        self.parent.loq_queue.put(f'Removed model: {tag}')
+
+        return
+
+
+class ModelLoading:
+
+    def __init__(self, parent: 'LlmServerWidget') -> None:
+
+        self.parent = weakref.proxy(parent)
+
+        self.by_id: dict = {}
+
+        self.model_select: ui.select = None
+        self.location: ui.input = None
+        self.button_browse: ui.button = None
+        self.button_load: ui.button = None
+
+        with ui.row().classes('items-start gap-3'):
+            ui.label('Select:').classes('pt-2 font-medium')
+
+            self.model_select = ui.select(
+                options=list(self.parent.server.backend.models.keys()),
+                label='Model',
+                on_change=self.on_model_select
+                ).props('outlined dense').classes('w-[8rem]')
+
+        with ui.row().classes('items-start gap-3'):
+
+            ui.label('Location:').classes('pt-2 font-medium')
+
+            self.location = ui.input(
+                label='Model cache',
+                placeholder='.../model cache',
+                value='',
+                ).props('dense outlined clearable').classes('w-[20rem]')
+            self.location.on('change', lambda e: self.on_location_change(e))
+
+            self.button_browse = ui.button(
+                text='Browse',
+                on_click=self.on_browse).props('unelevated')
+
+        with ui.row().classes('w-full gap-1 justify-center'):
+            self.button_load = ui.button(
+                text='Load',
+                color='gold',
+                on_click=self.on_load).props('unelevated')
+
+
+    def on_model_select(self, e):
+        self.selected_model = e.value
+        self.location.value = ''
+        return
+
+    def on_location_change(self, e):
+        self.location.value = e.value
+        return
+
+    def on_load(self, e):
+        self.parent.server.load_model(tag=self.selected_model, location=self.location.value)
+        self.parent.log_queue.put(f'Model "{self.selected_model}" loaded.')
+        self.location.value = ''
+
+    async def on_browse(self) -> None:
+        import os
+        start_dir = os.path.expanduser('~')
+        file_path = await LocalFilePicker(start_dir, multiple=False)
+
+        if not file_path:
+            return
+
+        self.location.value = file_path[0]
+        self.location.update()
+
+        return
+            
+with ui.row().classes('w-full justify-center p-6'):
+    LlmServerWidget()
+
+ui.run(title='LLM Server Widget', port=8000)
